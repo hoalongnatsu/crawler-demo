@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:14
+    container_name: postgres
+    environment:
+      POSTGRES_DB: crawler
+      POSTGRES_USER: crawler
+      POSTGRES_PASSWORD: 200lab
+      PGDATA: /data/postgres
+    volumes:
+       - ./postgres:/data/postgres
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+  redis:
+    image: redis/redis-stack
+    container_name: redis
+    environment:
+      - "REDIS_ARGS=--requirepass 200lab"
+    ports:
+      - 6379:6379
