@@ -18,9 +18,7 @@ import (
 var Migrations = migrate.NewMigrations()
 
 func main() {
-	if os.Getenv("ENV") == "local" {
-		godotenv.Load()
-	}
+	godotenv.Load()
 
 	dsn := os.Getenv("POSTGRES_DNS")
 	sqldb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(dsn)))

@@ -13,14 +13,13 @@ import (
 )
 
 type Post struct {
-	Link string   `json:"link"`
-	Tags []string `json:"tags"`
+	Title string   `json:"title"`
+	Link  string   `json:"link"`
+	Tags  []string `json:"tags"`
 }
 
 func main() {
-	if os.Getenv("ENV") == "local" {
-		godotenv.Load()
-	}
+	godotenv.Load()
 
 	// Redis
 	rc := redis.NewClient(&redis.Options{
@@ -46,6 +45,7 @@ func main() {
 			link := h.Attr("href")
 
 			if strings.Contains(link, "/p/") {
+				p.Title = h.Text
 				p.Link = link
 			}
 		})
@@ -70,14 +70,18 @@ func main() {
 				MaxLenApprox: 0,
 				ID:           "",
 				Values: map[string]interface{}{
-					"link": p.Link,
-					"tags": t,
+					"title": p.Title,
+					"link":  p.Link,
+					"tags":  t,
 				},
 			}).Err()
 
 			if err != nil {
 				log.Fatal(err)
 			}
+
+			fmt.Println("-------")
+			fmt.Printf("Discover post: %v\n", p)
 		}
 
 	})

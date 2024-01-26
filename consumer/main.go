@@ -16,9 +16,7 @@ import (
 )
 
 func main() {
-	if os.Getenv("ENV") == "local" {
-		godotenv.Load()
-	}
+	godotenv.Load()
 
 	// Redis
 	rc := redis.NewClient(&redis.Options{
@@ -75,14 +73,15 @@ func main() {
 
 			link := fmt.Sprintf("%v", values["link"])
 
-			p := &Post{}
-			err := db.NewSelect().Model(p).Where("link = ?", link).Scan(ctx)
+			exists, err := db.NewSelect().Model((*Post)(nil)).Where("link = ?", link).Exists(ctx)
 			if err != nil {
-				log.Fatal(err)
+				log.Fatal("Query error: ", err)
 			}
 
-			if p.Link == "" {
+			if !exists {
+				p := &Post{}
 				p.Link = link
+				p.Title = fmt.Sprintf("%v", values["title"])
 
 				err = json.Unmarshal([]byte(fmt.Sprintf("%v", values["tags"])), &p.Tags)
 				if err != nil {
@@ -90,7 +89,7 @@ func main() {
 				}
 
 				fmt.Println("-------")
-				fmt.Printf("Link: %v\n", p)
+				fmt.Printf("Insert new link: %v\n", p)
 
 				_, err = db.NewInsert().Model(p).Exec(ctx)
 				if err != nil {
