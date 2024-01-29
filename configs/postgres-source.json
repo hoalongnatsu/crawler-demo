@@ -1,0 +1,14 @@
+{
+  "name": "postgres-crawler-source",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "plugin.name": "pgoutput",
+    "database.hostname": "postgres",
+    "database.port": "5432",
+    "database.user": "crawler",
+    "database.dbname": "crawler",
+    "database.password": "200lab",
+    "topic.prefix": "crawler",
+    "table.include.list": "public.posts"
+  }
+}
