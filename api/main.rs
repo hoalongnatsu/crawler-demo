@@ -1,11 +1,12 @@
 extern crate pretty_env_logger;
 
+use dotenv::dotenv;
+use elasticsearch::{http::transport::Transport, Elasticsearch, SearchParts};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use std::env;
 use warp::{Filter, Rejection, Reply};
-use dotenv::dotenv;
 
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
 struct Post {
@@ -13,6 +14,11 @@ struct Post {
     title: String,
     link: String,
     tags: Option<Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
+struct SearchQuery {
+    query: Option<Value>,
 }
 
 async fn get_posts(pool: PgPool) -> Result<impl Reply, Rejection> {
@@ -27,6 +33,36 @@ async fn get_posts(pool: PgPool) -> Result<impl Reply, Rejection> {
             Err(warp::reject::reject())
         }
     }
+}
+
+async fn search_posts(query: SearchQuery, es: Elasticsearch) -> Result<impl Reply, Rejection> {
+    let response = es.search(SearchParts::Index(&["crawler-posts"]))
+        .body(json!({
+            "query": {
+                "query_string": query
+            }
+        }))
+        .send()
+        .await
+        .map_err(|error| {
+            eprintln!("Elasticsearch request failed: {}", error);
+            warp::reject::reject()
+        })?;
+
+    let body = response.json::<Value>()
+        .await
+        .map_err(|error| {
+            eprintln!("Failed to parse Elasticsearch response: {}", error);
+            warp::reject()
+        })?;
+    
+    let mut v = Vec::new();
+    for hit in body["hits"]["hits"].as_array().unwrap() {
+        println!("{:?}", hit["_source"]["after"]);
+        v.push(hit["_source"]["after"].clone())
+    }
+
+    Ok(warp::reply::json(&v))
 }
 
 #[tokio::main]
@@ -44,12 +80,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .connect(&env::var("POSTGRES_DNS").unwrap())
         .await?;
 
+    let transport = Transport::single_node("http://localhost:9200")?;
+    let client = Elasticsearch::new(transport);
+
     let get_posts = warp::get()
         .and(warp::path("posts"))
         .and(with_db(pool.clone()))
         .and_then(get_posts);
 
+    let search_posts = warp::post()
+        .and(warp::path("posts"))
+        .and(warp::path("search"))
+        .and(json_body())
+        .and(with_es(client.clone()))
+        .and_then(search_posts);
+
     let routes = get_posts
+        .or(search_posts)
         .with(warp::cors().allow_any_origin())
         .with(warp::log("posts"));
 
@@ -62,4 +109,14 @@ fn with_db(
     pool: PgPool,
 ) -> impl Filter<Extract = (PgPool,), Error = std::convert::Infallible> + Clone {
     warp::any().map(move || pool.clone())
+}
+
+fn with_es(
+    es: Elasticsearch,
+) -> impl Filter<Extract = (Elasticsearch,), Error = std::convert::Infallible> + Clone {
+    warp::any().map(move || es.clone())
+}
+
+fn json_body() -> impl Filter<Extract = (SearchQuery,), Error = warp::Rejection> + Clone {
+    warp::body::content_length_limit(1024 * 16).and(warp::body::json())
 }

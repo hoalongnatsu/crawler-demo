@@ -29,6 +29,8 @@ services:
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
     container_name: elasticsearch
+    volumes:
+      - ./elasticsearch:/usr/share/elasticsearch/data
     ports:
       - 9200:9200
     environment:
@@ -38,6 +40,8 @@ services:
   kafka:
     image: confluentinc/cp-kafka:7.5.3
     container_name: kafka
+    volumes:
+      - ./kafka:/var/lib/kafka/data
     environment:
       CLUSTER_ID: 'q1Sh-9_ISia_zwGINzRvyQ'
       KAFKA_NODE_ID: 1
@@ -52,10 +56,18 @@ services:
   kafka-connect:
     image: confluentinc/cp-kafka-connect:7.5.3
     container_name: kafka-connect
+    command:
+      - bash
+      - -c
+      - |
+        echo "Installing Connector"
+        confluent-hub install --no-prompt debezium/debezium-connector-postgresql:2.2.1
+        confluent-hub install --no-prompt confluentinc/kafka-connect-elasticsearch:14.0.12
+        #
+        echo "Launching Kafka Connect"
+        /etc/confluent/docker/run
     ports:
       - "8083:8083"
-    depends_on:
-      - kafka
     environment:
       CONNECT_PLUGIN_PATH: /usr/share/java,/usr/share/confluent-hub-components
       CONNECT_BOOTSTRAP_SERVERS: kafka:29092
@@ -72,27 +84,19 @@ services:
       CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
       CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
       CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
-    command:
-      - bash
-      - -c
-      - |
-        echo "Installing Connector"
-        confluent-hub install --no-prompt debezium/debezium-connector-postgresql:2.2.1
-        confluent-hub install --no-prompt confluentinc/kafka-connect-elasticsearch:14.0.12
-        #
-        echo "Launching Kafka Connect"
-        /etc/confluent/docker/run
+    depends_on:
+      - kafka
   kafka-ui:
     container_name: kafka-ui
     image: provectuslabs/kafka-ui:latest
     ports:
       - 8080:8080
-    depends_on:
-      - kafka
-      - kafka-connect
     environment:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
       KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: post
       KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://kafka-connect:8083
       DYNAMIC_CONFIG_ENABLED: 'true'
+    depends_on:
+      - kafka
+      - kafka-connect

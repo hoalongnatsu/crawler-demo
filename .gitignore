@@ -1,2 +1,4 @@
 postgres
+elasticsearch
+kafka
 target

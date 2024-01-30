@@ -1,5 +1,5 @@
 {
-  "name": "postgres-crawler-source",
+  "name": "posts-source",
   "config": {
     "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
     "plugin.name": "pgoutput",
@@ -9,6 +9,10 @@
     "database.dbname": "crawler",
     "database.password": "200lab",
     "topic.prefix": "crawler",
-    "table.include.list": "public.posts"
+    "table.include.list": "public.posts",
+    "transforms": "rename",
+    "transforms.rename.type": "org.apache.kafka.connect.transforms.RegexRouter",
+    "transforms.rename.regex": "(.*)",
+    "transforms.rename.replacement": "crawler-posts"
   }
 }

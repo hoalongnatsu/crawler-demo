@@ -2,7 +2,7 @@
   "name": "elasticsearch-crawler-sink",
   "config": {
     "connector.class": "io.confluent.connect.elasticsearch.ElasticsearchSinkConnector",
-    "topics": "crawler.public.posts",
+    "topics": "crawler-posts",
     "key.ignore": "true",
     "connection.url": "http://elasticsearch:9200"
   }
