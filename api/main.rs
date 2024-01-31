@@ -85,7 +85,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .connect(&env::var("POSTGRES_DNS").unwrap())
         .await?;
 
-    let transport = Transport::single_node("http://localhost:9200")?;
+    let transport = Transport::single_node(&env::var("ELASTICSEARCH_DNS").unwrap())?;
     let client = Elasticsearch::new(transport);
 
     let get_posts = warp::get()
