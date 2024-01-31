@@ -105,7 +105,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with(warp::cors().allow_any_origin())
         .with(warp::log("posts"));
 
-    warp::serve(routes).run(([127, 0, 0, 1], 3000)).await;
+    warp::serve(routes).run(([0, 0, 0, 0], 3000)).await;
 
     Ok(())
 }
