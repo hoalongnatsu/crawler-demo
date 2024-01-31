@@ -58,8 +58,13 @@ async fn search_posts(query: SearchQuery, es: Elasticsearch) -> Result<impl Repl
     
     let mut v = Vec::new();
     for hit in body["hits"]["hits"].as_array().unwrap() {
-        println!("{:?}", hit["_source"]["after"]);
-        v.push(hit["_source"]["after"].clone())
+        let id = hit["_source"]["after"]["id"].clone();
+
+        if v.contains(&id) {
+            continue;
+        }
+
+        v.push(id);
     }
 
     Ok(warp::reply::json(&v))
