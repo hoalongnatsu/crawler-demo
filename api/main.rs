@@ -1,5 +1,7 @@
 extern crate pretty_env_logger;
 
+mod telemetry;
+
 use dotenv::dotenv;
 use elasticsearch::{http::transport::Transport, Elasticsearch, SearchParts};
 use serde::{Deserialize, Serialize};
@@ -22,9 +24,16 @@ struct SearchQuery {
 }
 
 async fn get_posts(pool: PgPool) -> Result<impl Reply, Rejection> {
-    let result = sqlx::query_as::<_, Post>("SELECT id, title, link, tags FROM posts")
-        .fetch_all(&pool)
-        .await;
+    let span = tracing::info_span!(target: "api.post", "get posts");
+
+    let result = span.in_scope(|| {
+        async {
+            tracing::info_span!(target: "api.post", parent: &span, "connect db");
+
+            sqlx::query_as::<_, Post>("SELECT id, title, link, tags FROM posts")
+            .fetch_all(&pool).await
+        }
+    }).await;
 
     match result {
         Ok(posts) => Ok(warp::reply::json(&posts)),
@@ -36,6 +45,8 @@ async fn get_posts(pool: PgPool) -> Result<impl Reply, Rejection> {
 }
 
 async fn search_posts(query: SearchQuery, es: Elasticsearch) -> Result<impl Reply, Rejection> {
+    tracing::info_span!("search posts");
+
     let response = es.search(SearchParts::Index(&["crawler-posts"]))
         .body(json!({
             "query": {
@@ -76,9 +87,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Set `RUST_LOG=todos=debug` to see debug logs
         env::set_var("RUST_LOG", "posts=info");
     }
-    pretty_env_logger::init();
 
     dotenv().ok();
+    telemetry::init_tracer();
 
     let pool: sqlx::Pool<sqlx::Postgres> = PgPoolOptions::new()
         .max_connections(5)
