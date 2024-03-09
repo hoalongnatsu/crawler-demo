@@ -1,6 +1,24 @@
 version: "3.8"
 
 services:
+  crawler:
+    container_name: crawler
+    build:
+      context: crawler
+    env_file:
+      - crawler/.env.container
+    depends_on:
+      - postgres
+      - redis
+  consumer:
+    container_name: consumer
+    build:
+      context: consumer
+    env_file:
+      - consumer/.env.container
+    depends_on:
+      - postgres
+      - redis
   postgres:
     image: postgres:14
     container_name: postgres
