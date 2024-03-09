@@ -2,3 +2,4 @@ postgres
 elasticsearch
 kafka
 target
+/tempo
