@@ -7,40 +7,17 @@ services:
       context: crawler
     env_file:
       - crawler/.env.container
-    depends_on:
-      - postgres
-      - redis
+    networks:
+      - crawler
   consumer:
     container_name: consumer
     build:
       context: consumer
     env_file:
       - consumer/.env.container
-    depends_on:
-      - postgres
-      - redis
-  postgres:
-    image: postgres:14
-    container_name: postgres
-    environment:
-      POSTGRES_DB: crawler
-      POSTGRES_USER: crawler
-      POSTGRES_PASSWORD: 200lab
-      PGDATA: /data/postgres
-    command:
-      - bash
-      - -c
-      - docker-entrypoint.sh -c config_file=/etc/postgresql/postgres.conf -c hba_file=/etc/postgresql/pg_hba.conf
-    volumes:
-       - ./postgres:/data/postgres
-       - ./configs/postgresql:/etc/postgresql
-    ports:
-      - "5432:5432"
-    restart: unless-stopped
-  redis:
-    image: redis/redis-stack:6.2.6-v11
-    container_name: redis
-    environment:
-      - "REDIS_ARGS=--requirepass 200lab"
-    ports:
-      - 6379:6379
+    networks:
+      - crawler
+
+networks:
+  crawler:
+    external: true

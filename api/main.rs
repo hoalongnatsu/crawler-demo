@@ -36,7 +36,8 @@ async fn get_posts(pool: PgPool) -> Result<impl Reply, Rejection> {
 }
 
 async fn search_posts(query: SearchQuery, es: Elasticsearch) -> Result<impl Reply, Rejection> {
-    let response = es.search(SearchParts::Index(&["crawler-posts"]))
+    let response = es
+        .search(SearchParts::Index(&["crawler-posts"]))
         .body(json!({
             "query": {
                 "query_string": query
@@ -49,13 +50,11 @@ async fn search_posts(query: SearchQuery, es: Elasticsearch) -> Result<impl Repl
             warp::reject::reject()
         })?;
 
-    let body = response.json::<Value>()
-        .await
-        .map_err(|error| {
-            eprintln!("Failed to parse Elasticsearch response: {}", error);
-            warp::reject()
-        })?;
-    
+    let body = response.json::<Value>().await.map_err(|error| {
+        eprintln!("Failed to parse Elasticsearch response: {}", error);
+        warp::reject()
+    })?;
+
     let mut v = Vec::new();
     for hit in body["hits"]["hits"].as_array().unwrap() {
         let id = hit["_source"]["after"]["id"].clone();
@@ -100,9 +99,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and(with_es(client.clone()))
         .and_then(search_posts);
 
+    let options_route = warp::options().map(warp::reply);
+
+    let cors = warp::cors()
+        .allow_any_origin()
+        .allow_methods(vec!["GET", "POST", "OPTIONS"])
+        .allow_headers(vec!["Content-Type"]);
+
     let routes = get_posts
         .or(search_posts)
-        .with(warp::cors().allow_any_origin())
+        .or(options_route)
+        .with(cors)
         .with(warp::log("posts"));
 
     warp::serve(routes).run(([0, 0, 0, 0], 3000)).await;
