@@ -1,0 +1,25 @@
+version: "3.8"
+
+services:
+  website:
+    container_name: website
+    build:
+      context: website
+    ports:
+      - "3100:80"
+    networks:
+      - crawler
+  api:
+    container_name: api
+    build:
+      context: api
+    env_file:
+      - api/.env.container
+    ports:
+      - "3000:3000"
+    networks:
+      - crawler
+
+networks:
+  crawler:
+    external: true

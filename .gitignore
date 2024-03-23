@@ -3,3 +3,4 @@ elasticsearch
 kafka
 target
 /tempo
+node_modules
