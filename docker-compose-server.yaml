@@ -5,28 +5,28 @@ services:
     image: 080196/crawler-app
     container_name: crawler
     env_file:
-      - .env.crawler
+      - ./configs/.env.crawler
     networks:
       - crawler
   consumer:
     image: 080196/consumer-app
     container_name: consumer
     env_file:
-      - .env.consumer
+      - ./configs/.env.consumer
     networks:
       - crawler
   website:
-    image: 080196/consumer-website
+    image: 080196/crawler-website
     container_name: website
     ports:
       - "3100:80"
     networks:
       - crawler
   api:
-    image: 080196/consumer-api
+    image: 080196/crawler-api
     container_name: api
     env_file:
-      - .env.api
+      - ./configs/.env.api
     ports:
       - "3000:3000"
     networks:
@@ -64,7 +64,7 @@ services:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
     container_name: elasticsearch
     volumes:
-      - ./elasticsearch:/usr/share/elasticsearch/data
+      - elasticsearch-data:/usr/share/elasticsearch/data
     ports:
       - 9200:9200
     environment:
@@ -77,7 +77,7 @@ services:
     image: confluentinc/cp-kafka:7.5.3
     container_name: kafka
     volumes:
-      - ./kafka:/var/lib/kafka/data
+      - kafka-data:/var/lib/kafka/data
     environment:
       CLUSTER_ID: 'q1Sh-9_ISia_zwGINzRvyQ'
       KAFKA_NODE_ID: 1
@@ -142,6 +142,10 @@ services:
       - kafka-connect
     networks:
       - crawler
+
+volumes:
+  kafka-data:
+  elasticsearch-data:
 
 networks:
   crawler:
