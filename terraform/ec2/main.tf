@@ -25,6 +25,8 @@ resource "aws_instance" "crawler" {
   ami           = data.aws_ami.ubuntu.id
   instance_type = "t3.medium"
   key_name      = "test"
+
+  # /var/log/cloud-init-output.log
   user_data     = data.cloudinit_config.config.rendered
 
   vpc_security_group_ids = [
