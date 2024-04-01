@@ -10,8 +10,8 @@ runcmd:
   - curl -sOL https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh
   - chmod +x wait-for-it.sh
   - ./wait-for-it.sh -t 60 localhost:5432 -- echo "postgres up"
-  - docker run --env-file=./migrate/.env.container --net crawler 080196/crawler-app-migrate init
-  - docker run --env-file=./migrate/.env.container --net crawler 080196/crawler-app-migrate migrate
+  - docker run --env-file=./migrate/.env.container --net crawler 080196/crawler-app-migrate /app/run init
+  - docker run --env-file=./migrate/.env.container --net crawler 080196/crawler-app-migrate /app/run migrate
   - ./wait-for-it.sh -t 60 localhost:8083 -- echo "kafka connect up"
   - curl -i -X POST -H "Accept:application/json" -H  "Content-Type:application/json" http://localhost:8083/connectors/ -d @configs/postgres-source.json 
   - curl -i -X POST -H "Accept:application/json" -H  "Content-Type:application/json" http://localhost:8083/connectors/ -d @configs/elasticsearch-sink.json 
