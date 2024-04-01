@@ -5,3 +5,5 @@ target
 /tempo
 node_modules
 a-local
+.terraform
+terraform.tfstate.*
