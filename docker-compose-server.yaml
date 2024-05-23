@@ -1,0 +1,152 @@
+version: "3.8"
+
+services:
+  crawler:
+    image: 080196/crawler-app
+    container_name: crawler
+    env_file:
+      - ./configs/.env.crawler
+    networks:
+      - crawler
+  consumer:
+    image: 080196/consumer-app
+    container_name: consumer
+    env_file:
+      - ./configs/.env.consumer
+    networks:
+      - crawler
+  website:
+    image: 080196/crawler-website
+    container_name: website
+    ports:
+      - "3100:80"
+    networks:
+      - crawler
+  api:
+    image: 080196/crawler-api
+    container_name: api
+    env_file:
+      - ./configs/.env.api
+    ports:
+      - "3000:3000"
+    networks:
+      - crawler
+  postgres:
+    image: postgres:14
+    container_name: postgres
+    environment:
+      POSTGRES_DB: crawler
+      POSTGRES_USER: crawler
+      POSTGRES_PASSWORD: 200lab
+      PGDATA: /data/postgres
+    command:
+      - bash
+      - -c
+      - docker-entrypoint.sh -c config_file=/etc/postgresql/postgres.conf -c hba_file=/etc/postgresql/pg_hba.conf
+    volumes:
+       - ./postgres:/data/postgres
+       - ./configs/postgresql:/etc/postgresql
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    networks:
+      - crawler
+  redis:
+    image: redis/redis-stack:6.2.6-v11
+    container_name: redis
+    environment:
+      - "REDIS_ARGS=--requirepass 200lab"
+    ports:
+      - 6379:6379
+    networks:
+      - crawler
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    container_name: elasticsearch
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    ports:
+      - 9200:9200
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms256m -Xmx256m
+    networks:
+      - crawler
+  kafka:
+    image: confluentinc/cp-kafka:7.5.3
+    container_name: kafka
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    environment:
+      CLUSTER_ID: 'q1Sh-9_ISia_zwGINzRvyQ'
+      KAFKA_NODE_ID: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092'
+      KAFKA_LISTENERS: 'PLAINTEXT://kafka:29092,CONTROLLER://kafka:29093,PLAINTEXT_HOST://0.0.0.0:9092'
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:29093'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - crawler
+  kafka-connect:
+    image: confluentinc/cp-kafka-connect:7.5.3
+    container_name: kafka-connect
+    command:
+      - bash
+      - -c
+      - |
+        echo "Installing Connector"
+        confluent-hub install --no-prompt debezium/debezium-connector-postgresql:2.2.1
+        confluent-hub install --no-prompt confluentinc/kafka-connect-elasticsearch:14.0.12
+        #
+        echo "Launching Kafka Connect"
+        /etc/confluent/docker/run
+    ports:
+      - "8083:8083"
+    environment:
+      CONNECT_PLUGIN_PATH: /usr/share/java,/usr/share/confluent-hub-components
+      CONNECT_BOOTSTRAP_SERVERS: kafka:29092
+      CONNECT_GROUP_ID: post-connect
+      CONNECT_CONFIG_STORAGE_TOPIC: _post-configs
+      CONNECT_OFFSET_STORAGE_TOPIC: _post-offsets
+      CONNECT_STATUS_STORAGE_TOPIC: _post-status
+      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_INTERNAL_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_INTERNAL_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_REST_ADVERTISED_HOST_NAME: kafka-connect
+      CONNECT_REPLICATION_FACTOR: 1
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
+    depends_on:
+      - kafka
+    networks:
+      - crawler
+  kafka-ui:
+    container_name: kafka-ui
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - 8080:8080
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: post
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://kafka-connect:8083
+      DYNAMIC_CONFIG_ENABLED: 'true'
+    depends_on:
+      - kafka
+      - kafka-connect
+    networks:
+      - crawler
+
+volumes:
+  kafka-data:
+  elasticsearch-data:
+
+networks:
+  crawler:
+    external: true
