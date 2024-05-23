@@ -5,6 +5,7 @@ use opentelemetry_sdk::{runtime, trace as sdktrace, Resource};
 use tracing_core::Level;
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use std::env;
 
 pub(crate) fn init_tracer() {
     let otlp_exporter = opentelemetry_otlp::new_exporter()
