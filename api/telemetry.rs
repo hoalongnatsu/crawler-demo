@@ -9,7 +9,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 pub(crate) fn init_tracer() {
     let otlp_exporter = opentelemetry_otlp::new_exporter()
         .tonic()
-        .with_endpoint("http://localhost:4317");
+        .with_endpoint(&env::var("OTLP_EXPORTER").unwrap());
 
     let tracer =
         opentelemetry_otlp::new_pipeline()
